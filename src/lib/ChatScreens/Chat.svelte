@@ -17,6 +17,7 @@
     import { alertClear, alertConfirm, alertNormal, alertRequestData, alertWait } from "../../ts/alert"
     import { ParseMarkdown, type CbsConditions, type simpleCharacterArgument } from "../../ts/parser.svelte"
     import { getCurrentCharacter, getCurrentChat, setCurrentChat, type MessageGenerationInfo } from "../../ts/storage/database.svelte"
+    import { selectedCharID } from "../../ts/stores.svelte"
     import { HideIconStore, ReloadGUIPointer, selIdState } from "../../ts/stores.svelte"
     import AutoresizeArea from "../UI/GUI/TextAreaResizable.svelte"
     import ChatBody from './ChatBody.svelte'
@@ -24,7 +25,8 @@
     let translating = $state(false)
     let editMode = $state(false)
     let statusMessage:string = $state('')
-    let retranslate = false
+    let retranslate = $state(false)
+    let bodyRoot:HTMLElement|null = $state(null)
     interface Props {
         message?: string;
         name?: string;
@@ -200,8 +202,12 @@
             <button class="text-sm p-1 text-textcolor2 border-darkborderc float-end mr-2 my-1
                             hover:ring-darkbutton hover:ring rounded-md hover:text-textcolor transition-all flex justify-center items-center" 
                     onclick={() => {
+                        const currentGenerationInfo = idx >= 0 ? 
+                            DBState.db.characters[$selectedCharID].chats[DBState.db.characters[$selectedCharID].chatPage].message[idx].generationInfo :
+                            messageGenerationInfo
+
                         alertRequestData({
-                            genInfo: messageGenerationInfo,
+                            genInfo: currentGenerationInfo,
                             idx: idx,
                         })
                     }}
@@ -217,7 +223,6 @@
                             hover:ring-darkbutton hover:ring rounded-md hover:text-textcolor transition-all flex justify-center items-center" 
                     onclick={() => {
                         retranslate = true
-                        $ReloadGUIPointer = $ReloadGUIPointer + 1
                     }}
             >
                 <RefreshCcwIcon size={20} />
@@ -243,7 +248,10 @@
         {@const totalLengthPointer = (idx > totalLength - 6) ? totalLength : 0}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <span class="text chat-width chattext prose minw-0" class:prose-invert={$ColorSchemeTypeStore} onclick={() => {
+        <span class="text chat-width chattext prose minw-0"
+            class:prose-invert={$ColorSchemeTypeStore}
+            bind:this={bodyRoot}
+            onclick={() => {
             if(DBState.db.clickToEdit && idx > -1){
                 editMode = true
             }
@@ -258,9 +266,11 @@
                     {idx}
                     {msgDisplay}
                     {name}
+                    {bodyRoot}
                     role={role ?? null}
                     bind:translated={translated}
-                    bind:translating={translating} />
+                    bind:translating={translating}
+                    bind:retranslate={retranslate} />
             {/key}
         </span>
     {/if}
